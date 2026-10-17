@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Stagecraft — Local-First Screen Recorder, Spring-Physics Auto-Zoom &amp; Walkthrough Studio</title>
+  <meta name="description" content="Open-source, local-first screen recorder and motion studio with damped harmonic spring zooms, velocity cursor blur, keystroke HUDs, and interactive HTML walkthrough exports." />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="studio-shell">
+    <!-- Top Studio Command Bar -->
+    <header class="topbar">
+      <div class="topbar-group">
+        <div class="brand-pill">
+          <div class="brand-logo" aria-hidden="true">S</div>
+          <span class="brand-name">Stagecraft</span>
+          <span class="brand-tag">LOCAL STUDIO</span>
+        </div>
+        <input
+          id="projectTitleInput"
+          class="project-title-input"
+          type="text"
+          value="Zero-Downtime Edge Release — Product Walkthrough"
+          aria-label="Project title"
+        />
+        <select id="scenePresetSelect" class="select-pill" aria-label="Demo scene preset">
+          <option value="code-deploy">Scene: Edge Release IDE</option>
+          <option value="ai-workflow">Scene: Agentic DAG Studio</option>
+          <option value="fintech-command">Scene: Treasury Liquidity Desk</option>
+        </select>
+        <button id="undoBtn" class="btn btn-icon" title="Undo (⌘Z)" aria-label="Undo" disabled>↶</button>
+        <button id="redoBtn" class="btn btn-icon" title="Redo (⇧⌘Z)" aria-label="Redo" disabled>↷</button>
+      </div>
+
+      <div class="topbar-group">
+        <button id="recordScreenBtn" class="btn btn-record" title="Record screen, cursor, and clicks locally">
+          <span class="rec-dot"></span>
+          <span id="recordBtnLabel">Record Screen</span>
+        </button>
+        <button id="importVideoBtn" class="btn" title="Import local MP4/WebM screen recording">
+          ↑ Import Video
+        </button>
+        <input id="videoFileInput" type="file" accept="video/mp4,video/webm,video/quicktime" hidden />
+
+        <div class="segmented" id="aspectRatioGroup" role="group" aria-label="Aspect ratio">
+          <button class="seg-btn active" data-aspect="16:9">16:9</button>
+          <button class="seg-btn" data-aspect="16:10">16:10</button>
+          <button class="seg-btn" data-aspect="4:3">4:3</button>
+          <button class="seg-btn" data-aspect="1:1">1:1</button>
+          <button class="seg-btn" data-aspect="9:16">9:16</button>
+        </div>
+      </div>
+
+      <div class="topbar-group">
+        <button id="shortcutsBtn" class="btn btn-icon" title="Keyboard shortcuts &amp; project JSON (?)">?</button>
+        <button id="exportArcadeBtn" class="btn" title="Export standalone interactive HTML walkthrough">
+          ✦ Interactive HTML
+        </button>
+        <button id="openExportDialogBtn" class="btn btn-primary">
+          Export Video
+        </button>
+      </div>
+    </header>
+
+    <!-- Center Stage Viewport -->
+    <main class="stage-area" id="stageDropZone">
+      <div class="stage-hud-top">
+        <div class="segmented" id="canvasToolGroup" role="group" aria-label="Canvas click tool">
+          <button class="seg-btn active" data-tool="inspect" title="Click canvas to reposition selected zoom focus">
+            ⌖ Focus Target
+          </button>
+          <button class="seg-btn" data-tool="add-zoom" title="Click anywhere on canvas to insert a spring zoom block at playhead">
+            + Click to Zoom
+          </button>
+          <button class="seg-btn" data-tool="add-spotlight" title="Click anywhere on canvas to drop an interactive spotlight step">
+            + Click to Spotlight
+          </button>
+        </div>
+
+        <div class="telemetry-pills">
+          <div class="telemetry-pill">Zoom <strong id="hudZoomScale">1.00×</strong></div>
+          <div class="telemetry-pill">Cursor <strong id="hudCursorPos">0.50, 0.50</strong></div>
+          <div class="telemetry-pill">Spring <strong id="hudSpringBadge">Snappy · ζ 0.85</strong></div>
+        </div>
+      </div>
+
+      <div class="canvas-viewport">
+        <canvas id="studioCanvas" class="studio-canvas" width="1920" height="1080"></canvas>
+        <div id="dropOverlay" class="drop-overlay">Drop MP4 / WebM video or .stagecraft.json project here</div>
+      </div>
+
+      <!-- Transport Deck -->
+      <div class="transport-bar">
+        <div class="topbar-group">
+          <button id="playPauseBtn" class="btn btn-primary" style="min-width:78px;" aria-label="Play or pause">
+            ▶ Play
+          </button>
+          <button id="stepBackBtn" class="btn btn-icon" title="Step back 100ms (←)" aria-label="Step back">⏮</button>
+          <button id="stepFwdBtn" class="btn btn-icon" title="Step forward 100ms (→)" aria-label="Step forward">⏭</button>
+          <button id="loopToggleBtn" class="btn" title="Toggle loop playback (L)">↻ Loop: On</button>
+          <div class="timecode-display" id="timecodeDisplay">
+            00:00.00 <span>/ 00:10.00</span>
+          </div>
+        </div>
+
+        <div class="topbar-group">
+          <button id="addZoomAtPlayheadBtn" class="btn" title="Add spring zoom block at playhead (Z)">
+            + Zoom Here <kbd>Z</kbd>
+          </button>
+          <button id="autoZoomClicksBtn" class="btn" title="Auto-generate spring zooms from click clusters">
+            ⚡ Auto-Zoom Clicks
+          </button>
+          <button id="addKeystrokeBtn" class="btn" title="Add macOS keystroke HUD pill at playhead (K)">
+            + Keystroke <kbd>K</kbd>
+          </button>
+          <button id="addSpotlightBtn" class="btn" title="Add spotlight step at playhead (S)">
+            + Spotlight <kbd>S</kbd>
+          </button>
+          <button id="deleteSelectedBtn" class="btn" title="Delete selected zoom block (⌫)" disabled>
+            Delete
+          </button>
+        </div>
+      </div>
+    </main>
+
+    <!-- Right Pro Inspector Panel -->
+    <aside class="inspector" aria-label="Studio inspector">
+      <div class="inspector-tabs" role="tablist">
+        <button class="insp-tab active" data-tab="backdrop" role="tab">Backdrop</button>
+        <button class="insp-tab" data-tab="spring" role="tab">Spring &amp; Zoom</button>
+        <button class="insp-tab" data-tab="cursor" role="tab">Cursor &amp; Blur</button>
+        <button class="insp-tab" data-tab="overlays" role="tab">HUD &amp; PiP</button>
+      </div>
+
+      <!-- TAB 1: Backdrop & Frame -->
+      <div class="inspector-body" id="tab-backdrop">
+        <section class="insp-section">
+          <div class="insp-section-header">
+            <span>Studio Backdrop</span>
+            <span id="activeBackdropLabel" style="color:var(--accent-bright)">Sequoia Aurora</span>
+          </div>
+          <div class="backdrop-grid" id="backdropGrid"></div>
+        </section>
+
+        <section class="insp-section">
+          <div class="insp-section-header"><span>Window Geometry &amp; Shadow</span></div>
+          <div class="control-row">
+            <div class="control-label"><span>Canvas Padding</span><span class="control-val" id="valPadding">64 px</span></div>
+            <input id="sliderPadding" type="range" min="0" max="140" step="2" value="64" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Corner Radius</span><span class="control-val" id="valRadius">20 px</span></div>
+            <input id="sliderRadius" type="range" min="0" max="36" step="1" value="20" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Elevation Shadow</span><span class="control-val" id="valShadow">85%</span></div>
+            <input id="sliderShadow" type="range" min="0" max="100" step="1" value="85" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Specular Glass Rim</span><span class="control-val" id="valBorder">65%</span></div>
+            <input id="sliderBorder" type="range" min="0" max="100" step="1" value="65" />
+          </div>
+        </section>
+
+        <section class="insp-section">
+          <div class="insp-section-header"><span>Window Chrome &amp; 3D Perspective</span></div>
+          <div class="control-row">
+            <div class="control-label"><span>Window Header Style</span></div>
+            <select id="windowChromeSelect" class="select-pill" style="width:100%;">
+              <option value="macos-dark">macOS Sequoia Dark</option>
+              <option value="macos-glass">macOS Translucent Glass</option>
+              <option value="minimal">Minimal Header</option>
+              <option value="none">Borderless Viewport</option>
+            </select>
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Window Title Bar</span></div>
+            <input id="windowTitleInput" class="project-title-input" style="width:100%;background:var(--bg-control);border-color:var(--border-subtle);" type="text" value="stagecraft — edge-router.ts — zsh" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>3D Perspective Tilt X</span><span class="control-val" id="valTiltX">0°</span></div>
+            <input id="sliderTiltX" type="range" min="-18" max="18" step="1" value="0" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>3D Perspective Tilt Y</span><span class="control-val" id="valTiltY">0°</span></div>
+            <input id="sliderTiltY" type="range" min="-18" max="18" step="1" value="0" />
+          </div>
+          <div class="toggle-row">
+            <span>Dynamic Cursor-Follow Tilt</span>
+            <button id="toggleDynamicTilt" class="switch active" type="button" aria-label="Toggle dynamic cursor tilt"></button>
+          </div>
+        </section>
+      </div>
+
+      <!-- TAB 2: Spring Physics & Active Zoom Block -->
+      <div class="inspector-body" id="tab-spring" style="display:none;">
+        <section class="insp-section">
+          <div class="insp-section-header">
+            <span>Selected Zoom Block</span>
+            <span id="selectedZoomBadge" style="color:var(--accent-bright)">zoom-1</span>
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Magnification Scale</span><span class="control-val" id="valZoomScale">2.15×</span></div>
+            <input id="sliderZoomScale" type="range" min="1.2" max="4.0" step="0.05" value="2.15" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Camera Tracking Mode</span></div>
+            <select id="zoomModeSelect" class="select-pill" style="width:100%;">
+              <option value="auto-cursor">Follow Smoothed Cursor + Anchor</option>
+              <option value="manual">Lock to Fixed Target Coordinate</option>
+            </select>
+          </div>
+          <div class="control-row">
+            <div class="control-label">
+              <span>Target Focus (Click canvas to set)</span>
+              <span class="control-val" id="valZoomTarget">0.32, 0.38</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="insp-section">
+          <div class="insp-section-header">
+            <span>Damped Harmonic Spring</span>
+            <span id="springRegimeBadge" style="color:var(--success)">Underdamped</span>
+          </div>
+          <div class="segmented" id="springPresetGroup" style="width:100%;display:grid;grid-template-columns:repeat(4,1fr);">
+            <button class="seg-btn" data-spring="mellow">Mellow</button>
+            <button class="seg-btn active" data-spring="snappy">Snappy</button>
+            <button class="seg-btn" data-spring="bouncy">Bouncy</button>
+            <button class="seg-btn" data-spring="cinema">Cinema</button>
+          </div>
+
+          <canvas id="springCurveCanvas" class="spring-curve-canvas" width="560" height="192"></canvas>
+          <div class="spring-diagnostics">
+            <span id="diagZeta">ζ = 0.85</span>
+            <span id="diagOvershoot">Overshoot: 1%</span>
+            <span id="diagSettling">Settle: 390 ms</span>
+          </div>
+
+          <div class="control-row">
+            <div class="control-label"><span>Stiffness (k)</span><span class="control-val" id="valStiffness">260</span></div>
+            <input id="sliderStiffness" type="range" min="40" max="600" step="5" value="260" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Damping (c)</span><span class="control-val" id="valDamping">26</span></div>
+            <input id="sliderDamping" type="range" min="6" max="80" step="1" value="26" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Mass (m)</span><span class="control-val" id="valMass">0.90</span></div>
+            <input id="sliderMass" type="range" min="0.3" max="2.5" step="0.05" value="0.90" />
+          </div>
+        </section>
+      </div>
+
+      <!-- TAB 3: Cursor & Motion Blur -->
+      <div class="inspector-body" id="tab-cursor" style="display:none;">
+        <section class="insp-section">
+          <div class="insp-section-header"><span>Cursor Appearance &amp; Kinematics</span></div>
+          <div class="control-row">
+            <div class="control-label"><span>Cursor Glyph</span></div>
+            <select id="cursorStyleSelect" class="select-pill" style="width:100%;">
+              <option value="macos">macOS Sequoia Pointer</option>
+              <option value="studio-ring">Studio Contrast Ring</option>
+              <option value="touch-orb">Touch Keynote Orb</option>
+              <option value="crosshair">Precision Crosshair</option>
+            </select>
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Cursor Size</span><span class="control-val" id="valCursorScale">1.55×</span></div>
+            <input id="sliderCursorScale" type="range" min="1.0" max="3.0" step="0.05" value="1.55" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Catmull-Rom Path Smoothing</span><span class="control-val" id="valSmoothing">70%</span></div>
+            <input id="sliderSmoothing" type="range" min="0" max="100" step="1" value="70" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Directional Motion Blur</span><span class="control-val" id="valMotionBlur">55%</span></div>
+            <input id="sliderMotionBlur" type="range" min="0" max="100" step="1" value="55" />
+          </div>
+        </section>
+
+        <section class="insp-section">
+          <div class="insp-section-header"><span>Click Feedback &amp; Spotlight</span></div>
+          <div class="toggle-row">
+            <span>Expanding Click Ripples</span>
+            <button id="toggleClickRipple" class="switch active" type="button"></button>
+          </div>
+          <div class="toggle-row">
+            <span>Force-Touch Click Sound (WebAudio)</span>
+            <button id="toggleClickSound" class="switch active" type="button"></button>
+          </div>
+          <div class="toggle-row">
+            <span>Continuous Cursor Spotlight Mask</span>
+            <button id="toggleSpotlight" class="switch" type="button"></button>
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Spotlight Dimming Opacity</span><span class="control-val" id="valSpotlightOpacity">45%</span></div>
+            <input id="sliderSpotlightOpacity" type="range" min="15" max="85" step="1" value="45" />
+          </div>
+        </section>
+      </div>
+
+      <!-- TAB 4: Keystroke HUD & Presenter PiP -->
+      <div class="inspector-body" id="tab-overlays" style="display:none;">
+        <section class="insp-section">
+          <div class="insp-section-header"><span>Add Keystroke HUD Callout</span></div>
+          <div class="control-row">
+            <div class="control-label"><span>Shortcut Keys</span></div>
+            <input id="newKeystrokeKeys" class="project-title-input" style="width:100%;background:var(--bg-control);border-color:var(--border-subtle);" type="text" value="⌘ K" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Action Label</span></div>
+            <input id="newKeystrokeLabel" class="project-title-input" style="width:100%;background:var(--bg-control);border-color:var(--border-subtle);" type="text" value="Open Command Bar" />
+          </div>
+          <button id="insertKeystrokeCustomBtn" class="btn btn-primary" style="width:100%;">
+            + Insert Keystroke at Playhead
+          </button>
+        </section>
+
+        <section class="insp-section">
+          <div class="insp-section-header"><span>Presenter Webcam Bubble (PiP)</span></div>
+          <div class="toggle-row">
+            <span>Show Presenter Overlay</span>
+            <button id="toggleWebcamBubble" class="switch" type="button"></button>
+          </div>
+          <button id="connectWebcamHardwareBtn" class="btn" style="width:100%;">
+            ◉ Connect Live Camera Hardware
+          </button>
+          <div class="control-row">
+            <div class="control-label"><span>Corner Position</span></div>
+            <select id="webcamPositionSelect" class="select-pill" style="width:100%;">
+              <option value="bottom-right">Bottom Right</option>
+              <option value="bottom-left">Bottom Left</option>
+              <option value="top-right">Top Right</option>
+              <option value="top-left">Top Left</option>
+            </select>
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Mask Shape</span></div>
+            <select id="webcamShapeSelect" class="select-pill" style="width:100%;">
+              <option value="squircle">Apple Squircle</option>
+              <option value="circle">Studio Circle</option>
+            </select>
+          </div>
+          <div class="toggle-row">
+            <span>Auto-Duck Size During Zoom</span>
+            <button id="toggleWebcamDuck" class="switch active" type="button"></button>
+          </div>
+        </section>
+      </div>
+    </aside>
+
+    <!-- Bottom Multi-Track Timeline -->
+    <section class="timeline-panel" aria-label="Multi-track timeline">
+      <div class="timeline-header">
+        <div class="timeline-corner">TIMELINE · 4 TRACKS</div>
+        <div class="timeline-ruler" id="timelineRuler">
+          <canvas id="rulerCanvas" width="1400" height="30" style="width:100%;height:100%;display:block;"></canvas>
+        </div>
+      </div>
+
+      <div class="timeline-tracks" id="timelineTracksContainer">
+        <div class="track-row">
+          <div class="track-label"><span class="track-dot" style="background:#94A3B8"></span>Screen Source</div>
+          <div class="track-lane" id="laneVideo"></div>
+        </div>
+        <div class="track-row">
+          <div class="track-label"><span class="track-dot" style="background:#818CF8"></span>Zoom &amp; Spring</div>
+          <div class="track-lane" id="laneZoom"></div>
+        </div>
+        <div class="track-row">
+          <div class="track-label"><span class="track-dot" style="background:#38BDF8"></span>Cursor Clicks</div>
+          <div class="track-lane" id="laneClicks"></div>
+        </div>
+        <div class="track-row">
+          <div class="track-label"><span class="track-dot" style="background:#F59E0B"></span>HUD &amp; Steps</div>
+          <div class="track-lane" id="laneHud"></div>
+        </div>
+
+        <!-- Synchronized Playhead Line across lanes -->
+        <div id="playheadLine" class="playhead-line" style="left:148px;">
+          <div class="playhead-cap"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Native Top-Layer Export Modal Dialog (closedby="any") -->
+  <dialog id="exportDialog" class="studio-dialog" closedby="any" aria-labelledby="exportDialogTitle">
+    <div class="dialog-header">
+      <h2 id="exportDialogTitle" class="dialog-title">Export Studio Master</h2>
+      <button id="closeExportDialogBtn" class="btn btn-icon" type="button" aria-label="Close export dialog">✕</button>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <p style="color:var(--text-secondary);font-size:12.5px;">
+        Renders spring-physics camera zooms, directional cursor motion blur, and studio backdrops locally on your device. Zero cloud uploads or watermarks.
+      </p>
+
+      <div class="control-row">
+        <div class="control-label"><span>Frame Rate</span></div>
+        <select id="exportFpsSelect" class="select-pill" style="width:100%;">
+          <option value="60">60 FPS (Butter-Smooth Pro Motion)</option>
+          <option value="30">30 FPS (Fast Social / GitHub PR Embed)</option>
+        </select>
+      </div>
+
+      <div class="control-row">
+        <div class="control-label"><span>Output Resolution</span></div>
+        <select id="exportResSelect" class="select-pill" style="width:100%;">
+          <option value="1">1080p Full HD (1920×1080)</option>
+          <option value="0.75">720p Compact HD (1440×810)</option>
+          <option value="1.35">1440p Retina QHD (2592×1458)</option>
+        </select>
+      </div>
+
+      <div id="exportProgressBox" style="display:none;margin-top:4px;">
+        <div class="control-label">
+          <span id="exportStatusText">Rendering frame 0 / 600...</span>
+          <span class="control-val" id="exportPctText">0%</span>
+        </div>
+        <div class="progress-track">
+          <div id="exportProgressFill" class="progress-fill"></div>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px;">
+        <button id="exportJsonBtn" class="btn" type="button">Save .stagecraft.json</button>
+        <button id="startVideoExportBtn" class="btn btn-primary" type="button">Render &amp; Download Video</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Native Top-Layer Shortcuts & Project Modal Dialog (closedby="any") -->
+  <dialog id="shortcutsDialog" class="studio-dialog" closedby="any" aria-labelledby="shortcutsDialogTitle">
+    <div class="dialog-header">
+      <h2 id="shortcutsDialogTitle" class="dialog-title">Keyboard Shortcuts &amp; Project I/O</h2>
+      <button id="closeShortcutsDialogBtn" class="btn btn-icon" type="button" aria-label="Close shortcuts dialog">✕</button>
+    </div>
+
+    <div class="shortcut-grid">
+      <div class="shortcut-item"><span>Play / Pause</span><kbd>Space</kbd></div>
+      <div class="shortcut-item"><span>Add Spring Zoom</span><kbd>Z</kbd></div>
+      <div class="shortcut-item"><span>Add Keystroke HUD</span><kbd>K</kbd></div>
+      <div class="shortcut-item"><span>Add Spotlight Step</span><kbd>S</kbd></div>
+      <div class="shortcut-item"><span>Step Frame Back/Fwd</span><kbd>← / →</kbd></div>
+      <div class="shortcut-item"><span>Delete Selected Block</span><kbd>⌫ / Del</kbd></div>
+      <div class="shortcut-item"><span>Undo Edit</span><kbd>⌘ Z</kbd></div>
+      <div class="shortcut-item"><span>Redo Edit</span><kbd>⇧ ⌘ Z</kbd></div>
+    </div>
+
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-subtle);display:flex;justify-content:space-between;align-items:center;">
+      <span style="color:var(--text-secondary);font-size:12px;">Load or backup a `.stagecraft.json` project file:</span>
+      <div style="display:flex;gap:8px;">
+        <button id="loadProjectJsonBtn" class="btn" type="button">Load Project JSON</button>
+        <input id="projectJsonInput" type="file" accept=".json,application/json" hidden />
+      </div>
+    </div>
+  </dialog>
+
+  <script type="module" src="./assets/app.js"></script>
+</body>
+</html>

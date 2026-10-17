@@ -1,0 +1,41 @@
+{
+  "name": "stagecraft-studio",
+  "version": "0.1.0",
+  "description": "Local-first screen recorder, spring-physics auto-zoom compositor, and interactive walkthrough studio for the web.",
+  "license": "MIT",
+  "type": "module",
+  "Author": "carelessdept",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/carelessdept/stagecraft.git"
+  },
+  "homepage": "https://carelessdept.github.io/stagecraft/",
+  "keywords": [
+    "screen-recorder",
+    "screen-studio",
+    "product-demo",
+    "spring-physics",
+    "video-editor",
+    "webcodecs",
+    "canvas-compositor",
+    "interactive-demo"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "node scripts/build.mjs",
+    "test": "node --import tsx --test test/spring.test.ts test/cursor.test.ts test/timeline.test.ts test/history.test.ts test/exporter.test.ts",
+    "check": "npm run typecheck && npm test && npm run build",
+    "serve": "npx serve docs -l 4173"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "esbuild": "^0.28.2",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

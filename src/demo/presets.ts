@@ -121,7 +121,7 @@ export function createPresetProject(preset: DemoScenePreset = 'code-deploy'): St
   if (preset === 'ai-workflow') {
     return {
       version: '1.0',
-      name: 'Agentic Pipeline — Live Orchestration',
+      name: 'Agentic Pipeline · Live Orchestration',
       duration: 10.0,
       trimStart: 0,
       trimEnd: 10.0,
@@ -134,7 +134,7 @@ export function createPresetProject(preset: DemoScenePreset = 'code-deploy'): St
         shadowIntensity: 84,
         insetBorder: 65,
         windowChrome: 'macos-dark',
-        windowTitle: 'nexus.studio — workflow-canvas.tsx',
+        windowTitle: 'nexus.studio · workflow-canvas.tsx',
         tiltX: 2,
         tiltY: -3,
         dynamicTilt: true,
@@ -244,7 +244,7 @@ export function createPresetProject(preset: DemoScenePreset = 'code-deploy'): St
   if (preset === 'fintech-command') {
     return {
       version: '1.0',
-      name: 'Treasury OS — Instant Liquidity Settlement',
+      name: 'Treasury OS · Instant Liquidity Settlement',
       duration: 10.0,
       trimStart: 0,
       trimEnd: 10.0,
@@ -257,7 +257,7 @@ export function createPresetProject(preset: DemoScenePreset = 'code-deploy'): St
         shadowIntensity: 82,
         insetBorder: 60,
         windowChrome: 'macos-dark',
-        windowTitle: 'meridian.finance — settlement-desk',
+        windowTitle: 'meridian.finance · settlement-desk',
         tiltX: 0,
         tiltY: 0,
         dynamicTilt: true,
@@ -344,7 +344,7 @@ export function createPresetProject(preset: DemoScenePreset = 'code-deploy'): St
   // Default flagship preset: 'code-deploy'
   return {
     version: '1.0',
-    name: 'Zero-Downtime Edge Release — Product Walkthrough',
+    name: 'Zero-Downtime Edge Release · Product Walkthrough',
     duration: 10.0,
     trimStart: 0,
     trimEnd: 10.0,
@@ -357,7 +357,7 @@ export function createPresetProject(preset: DemoScenePreset = 'code-deploy'): St
       shadowIntensity: 85,
       insetBorder: 65,
       windowChrome: 'macos-dark',
-      windowTitle: 'stagecraft — edge-router.ts — zsh',
+      windowTitle: 'stagecraft · edge-router.ts · zsh',
       tiltX: 0,
       tiltY: 0,
       dynamicTilt: true,

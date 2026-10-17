@@ -124,7 +124,7 @@ export function generateInteractiveWalkthroughHtml(project: StagecraftProject): 
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>${safeTitle} — Interactive Walkthrough</title>
+<title>${safeTitle} · Interactive Walkthrough</title>
 <style>
   :root {
     --bg-0: ${theme.primaryStops[0]};

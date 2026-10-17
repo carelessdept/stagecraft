@@ -17,6 +17,7 @@ export interface CompositorFrameContext {
   webcamVideo?: HTMLVideoElement | null;
   showTargetReticle?: boolean;
   selectedZoomId?: string | null;
+  splitCompareRatio?: number | null; // 0..1 when Before/After split comparison is active
 }
 
 export interface RenderedFrameDiagnostics {
@@ -282,6 +283,89 @@ export function renderCompositeFrame(
       webcamVideo ?? null,
       refScale,
     );
+  }
+
+  // 11. Optional Split-Screen "Raw Capture vs Stagecraft Studio" Comparison Wipe
+  if (
+    typeof frameCtx.splitCompareRatio === 'number' &&
+    frameCtx.splitCompareRatio > 0.02 &&
+    frameCtx.splitCompareRatio < 0.98
+  ) {
+    const splitX = Math.round(canvasWidth * frameCtx.splitCompareRatio);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, splitX, canvasHeight);
+    ctx.clip();
+
+    // Flat unstyled raw capture on left half
+    ctx.fillStyle = '#050608';
+    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+    if (
+      sourceVideo &&
+      sourceVideo.readyState >= 2 &&
+      sourceVideo.videoWidth > 0 &&
+      sourceVideo.videoHeight > 0
+    ) {
+      ctx.drawImage(sourceVideo, 0, 0, canvasWidth, canvasHeight);
+    } else {
+      renderProceduralAppScene(ctx, project.scenePreset, canvasWidth, canvasHeight, timeSec);
+    }
+    drawSingleCursorGlyph(
+      ctx,
+      cursor.x * canvasWidth,
+      cursor.y * canvasHeight,
+      'macos',
+      1.0 * refScale,
+      0.9,
+    );
+    ctx.restore();
+
+    // Vertical comparison divider + handle + pills
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.lineWidth = Math.max(2, 2.5 * refScale);
+    ctx.beginPath();
+    ctx.moveTo(splitX, 0);
+    ctx.lineTo(splitX, canvasHeight);
+    ctx.stroke();
+
+    // Center drag handle circle
+    const cy = canvasHeight / 2;
+    ctx.beginPath();
+    ctx.arc(splitX, cy, 22 * refScale, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+    ctx.fill();
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = 2 * refScale;
+    ctx.stroke();
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = `700 ${Math.round(14 * refScale)}px -apple-system, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('↔', splitX, cy);
+
+    // Top-left "RAW CAPTURE" & Top-right "STAGECRAFT STUDIO" badges
+    const badgeY = 24 * refScale;
+    const badgeH = 32 * refScale;
+    if (splitX > 180 * refScale) {
+      roundRect(ctx, 24 * refScale, badgeY, 138 * refScale, badgeH, 8 * refScale);
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.82)';
+      ctx.fill();
+      ctx.fillStyle = '#94A3B8';
+      ctx.font = `700 ${Math.round(12 * refScale)}px -apple-system, sans-serif`;
+      ctx.fillText('RAW CAPTURE', 93 * refScale, badgeY + badgeH / 2);
+    }
+    if (canvasWidth - splitX > 210 * refScale) {
+      const bx = canvasWidth - 196 * refScale;
+      roundRect(ctx, bx, badgeY, 172 * refScale, badgeH, 8 * refScale);
+      ctx.fillStyle = 'rgba(99, 102, 241, 0.88)';
+      ctx.fill();
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = `700 ${Math.round(12 * refScale)}px -apple-system, sans-serif`;
+      ctx.fillText('STAGECRAFT STUDIO', bx + 86 * refScale, badgeY + badgeH / 2);
+    }
+    ctx.restore();
   }
 
   ctx.restore();

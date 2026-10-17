@@ -225,7 +225,7 @@ function renderCodeDeployScene(
 
   ctx.fillStyle = '#94A3B8';
   ctx.font = `600 ${Math.round(h * 0.018)}px "SF Mono", monospace`;
-  ctx.fillText('zsh — canary-verification-suite', rightX + w * 0.018, card2Y + h * 0.05);
+  ctx.fillText('zsh · canary-verification-suite', rightX + w * 0.018, card2Y + h * 0.05);
 
   const testProgress = clamp((t - 4.1) / 1.6, 0, 1);
   const passedCount = Math.round(14 + testProgress * 28);

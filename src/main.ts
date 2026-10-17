@@ -107,6 +107,8 @@ export function bootstrapStagecraftStudio(): void {
   let currentTime = 0.0;
   let isPlaying = true;
   let loopPlayback = true;
+  let playbackSpeedMultiplier = 1.0;
+  let splitCompareRatio: number | null = null;
   let selectedZoomId: string | null = history.state.zoomSegments[0]?.id ?? null;
   let canvasTool: CanvasToolMode = 'inspect';
   let lastFrameNow = performance.now();
@@ -485,7 +487,7 @@ export function bootstrapStagecraftStudio(): void {
       pill.style.left = `${(k.time / dur) * 100}%`;
       pill.style.width = `${Math.max(3, (k.duration / dur) * 100)}%`;
       pill.textContent = `⌨ ${k.keys}`;
-      pill.title = `${k.keys} (${k.label ?? ''}) — Click to jump, Alt+Click to delete`;
+      pill.title = `${k.keys} (${k.label ?? ''}) · Click to jump, Alt+Click to delete`;
       pill.addEventListener('click', ev => {
         ev.stopPropagation();
         if (ev.altKey) {
@@ -508,7 +510,7 @@ export function bootstrapStagecraftStudio(): void {
       pill.style.left = `${(s.time / dur) * 100}%`;
       pill.style.width = `${Math.max(4, (s.duration / dur) * 100)}%`;
       pill.textContent = `✦ ${s.title}`;
-      pill.title = `${s.title} — Click to jump, Alt+Click to delete`;
+      pill.title = `${s.title} · Click to jump, Alt+Click to delete`;
       pill.addEventListener('click', ev => {
         ev.stopPropagation();
         if (ev.altKey) {
@@ -580,10 +582,26 @@ export function bootstrapStagecraftStudio(): void {
   bindTimelineScrubbing(timelineRuler);
   bindTimelineScrubbing(timelineTracksContainer);
 
-  // --- Canvas Direct Interaction (Focus Target / Click-to-Zoom / Click-to-Spotlight) ---
+  // --- Canvas Direct Interaction (Split Wipe / Focus Target / Click-to-Zoom / Click-to-Spotlight) ---
   studioCanvas.addEventListener('pointerdown', ev => {
     if (!lastDiagnostics) return;
     const rect = studioCanvas.getBoundingClientRect();
+
+    if (splitCompareRatio !== null) {
+      const updateSplit = (clientX: number) => {
+        splitCompareRatio = clamp((clientX - rect.left) / Math.max(1, rect.width), 0.05, 0.95);
+      };
+      updateSplit(ev.clientX);
+      const onMove = (me: PointerEvent) => updateSplit(me.clientX);
+      const onUp = () => {
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+      };
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp);
+      return;
+    }
+
     const canvasX = ((ev.clientX - rect.left) / Math.max(1, rect.width)) * studioCanvas.width;
     const canvasY = ((ev.clientY - rect.top) / Math.max(1, rect.height)) * studioCanvas.height;
 
@@ -1000,7 +1018,7 @@ export function bootstrapStagecraftStudio(): void {
       await screenRecorder.start(result => {
         recordScreenBtn.classList.remove('is-recording');
         recordBtnLabel.textContent = 'Record Screen';
-        loadExternalVideoSource(result.videoUrl, 'Screen Capture — Studio Master', {
+        loadExternalVideoSource(result.videoUrl, 'Screen Capture · Studio Master', {
           duration: result.duration,
           cursorTrack: result.cursorTrack,
           keystrokes: result.keystrokes,
@@ -1106,6 +1124,28 @@ export function bootstrapStagecraftStudio(): void {
     void closeTopLayer(shortcutsDialog);
   });
 
+  const compareSplitBtn = document.getElementById('compareSplitBtn') as HTMLButtonElement;
+  function toggleSplitCompare(): void {
+    splitCompareRatio = splitCompareRatio === null ? 0.48 : null;
+    compareSplitBtn.classList.toggle('btn-primary', splitCompareRatio !== null);
+  }
+  compareSplitBtn.addEventListener('click', toggleSplitCompare);
+
+  const playbackSpeedSelect = document.getElementById('playbackSpeedSelect') as HTMLSelectElement;
+  playbackSpeedSelect.addEventListener('change', () => {
+    playbackSpeedMultiplier = Number(playbackSpeedSelect.value) || 1.0;
+  });
+
+  function exportCurrentPngFrame(): void {
+    studioCanvas.toBlob(blob => {
+      if (blob) {
+        triggerDownload(blob, `${slugify(project().name)}-frame-${currentTime.toFixed(1)}s.png`);
+      }
+    }, 'image/png');
+  }
+
+  document.getElementById('exportPngFrameBtn')!.addEventListener('click', exportCurrentPngFrame);
+
   document.getElementById('exportArcadeBtn')!.addEventListener('click', () => {
     const html = generateInteractiveWalkthroughHtml(project());
     const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
@@ -1198,6 +1238,12 @@ export function bootstrapStagecraftStudio(): void {
     } else if (ev.key.toLowerCase() === 's') {
       ev.preventDefault();
       insertSpotlightAtPlayhead();
+    } else if (ev.key.toLowerCase() === 'b') {
+      ev.preventDefault();
+      toggleSplitCompare();
+    } else if (ev.key.toLowerCase() === 'p') {
+      ev.preventDefault();
+      exportCurrentPngFrame();
     } else if (ev.key.toLowerCase() === 'l') {
       ev.preventDefault();
       loopToggleBtn.click();
@@ -1228,7 +1274,8 @@ export function bootstrapStagecraftStudio(): void {
 
     if (isPlaying) {
       const prevTime = currentTime;
-      const rate = getPlaybackRateAtTime(project().speedSegments, currentTime);
+      const rate =
+        getPlaybackRateAtTime(project().speedSegments, currentTime) * playbackSpeedMultiplier;
       currentTime += rawDt * rate;
 
       soundEngine.checkAndTriggerTimelineClicks(
@@ -1258,6 +1305,7 @@ export function bootstrapStagecraftStudio(): void {
       webcamVideo: webcamVideoEl,
       showTargetReticle: !isPlaying,
       selectedZoomId,
+      splitCompareRatio,
     });
 
     hudZoomScale.textContent = `${lastDiagnostics.camera.scale.toFixed(2)}×`;

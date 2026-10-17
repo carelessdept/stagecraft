@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Stagecraft — Local-First Screen Recorder, Spring-Physics Auto-Zoom &amp; Walkthrough Studio</title>
+  <title>Stagecraft · Local-First Screen Recorder, Spring-Physics Auto-Zoom &amp; Walkthrough Studio</title>
   <meta name="description" content="Open-source, local-first screen recorder and motion studio with damped harmonic spring zooms, velocity cursor blur, keystroke HUDs, and interactive HTML walkthrough exports." />
   <link rel="stylesheet" href="./styles.css" />
 </head>
@@ -21,7 +21,7 @@
           id="projectTitleInput"
           class="project-title-input"
           type="text"
-          value="Zero-Downtime Edge Release — Product Walkthrough"
+          value="Zero-Downtime Edge Release · Product Walkthrough"
           aria-label="Project title"
         />
         <select id="scenePresetSelect" class="select-pill" aria-label="Demo scene preset">
@@ -54,6 +54,9 @@
 
       <div class="topbar-group">
         <button id="shortcutsBtn" class="btn btn-icon" title="Keyboard shortcuts &amp; project JSON (?)">?</button>
+        <button id="exportPngFrameBtn" class="btn" title="Export current composite frame as 1080p PNG (P)">
+          ⊞ Frame PNG
+        </button>
         <button id="exportArcadeBtn" class="btn" title="Export standalone interactive HTML walkthrough">
           ✦ Interactive HTML
         </button>
@@ -66,15 +69,20 @@
     <!-- Center Stage Viewport -->
     <main class="stage-area" id="stageDropZone">
       <div class="stage-hud-top">
-        <div class="segmented" id="canvasToolGroup" role="group" aria-label="Canvas click tool">
-          <button class="seg-btn active" data-tool="inspect" title="Click canvas to reposition selected zoom focus">
-            ⌖ Focus Target
-          </button>
-          <button class="seg-btn" data-tool="add-zoom" title="Click anywhere on canvas to insert a spring zoom block at playhead">
-            + Click to Zoom
-          </button>
-          <button class="seg-btn" data-tool="add-spotlight" title="Click anywhere on canvas to drop an interactive spotlight step">
-            + Click to Spotlight
+        <div class="topbar-group">
+          <div class="segmented" id="canvasToolGroup" role="group" aria-label="Canvas click tool">
+            <button class="seg-btn active" data-tool="inspect" title="Click canvas to reposition selected zoom focus">
+              ⌖ Focus Target
+            </button>
+            <button class="seg-btn" data-tool="add-zoom" title="Click anywhere on canvas to insert a spring zoom block at playhead">
+              + Click to Zoom
+            </button>
+            <button class="seg-btn" data-tool="add-spotlight" title="Click anywhere on canvas to drop an interactive spotlight step">
+              + Click to Spotlight
+            </button>
+          </div>
+          <button id="compareSplitBtn" class="btn" title="Toggle split-screen Raw vs Stagecraft Studio comparison (B)">
+            ◫ Compare Raw <kbd>B</kbd>
           </button>
         </div>
 
@@ -99,6 +107,12 @@
           <button id="stepBackBtn" class="btn btn-icon" title="Step back 100ms (←)" aria-label="Step back">⏮</button>
           <button id="stepFwdBtn" class="btn btn-icon" title="Step forward 100ms (→)" aria-label="Step forward">⏭</button>
           <button id="loopToggleBtn" class="btn" title="Toggle loop playback (L)">↻ Loop: On</button>
+          <select id="playbackSpeedSelect" class="select-pill" title="Playback speed multiplier" aria-label="Playback speed">
+            <option value="0.5">0.5× Slow</option>
+            <option value="1" selected>1.0× Real</option>
+            <option value="1.5">1.5× Fast</option>
+            <option value="2">2.0× Turbo</option>
+          </select>
           <div class="timecode-display" id="timecodeDisplay">
             00:00.00 <span>/ 00:10.00</span>
           </div>
@@ -176,7 +190,7 @@
           </div>
           <div class="control-row">
             <div class="control-label"><span>Window Title Bar</span></div>
-            <input id="windowTitleInput" class="project-title-input" style="width:100%;background:var(--bg-control);border-color:var(--border-subtle);" type="text" value="stagecraft — edge-router.ts — zsh" />
+            <input id="windowTitleInput" class="project-title-input" style="width:100%;background:var(--bg-control);border-color:var(--border-subtle);" type="text" value="stagecraft · edge-router.ts · zsh" />
           </div>
           <div class="control-row">
             <div class="control-label"><span>3D Perspective Tilt X</span><span class="control-val" id="valTiltX">0°</span></div>
@@ -441,9 +455,11 @@
 
     <div class="shortcut-grid">
       <div class="shortcut-item"><span>Play / Pause</span><kbd>Space</kbd></div>
+      <div class="shortcut-item"><span>Compare Raw vs Studio</span><kbd>B</kbd></div>
       <div class="shortcut-item"><span>Add Spring Zoom</span><kbd>Z</kbd></div>
       <div class="shortcut-item"><span>Add Keystroke HUD</span><kbd>K</kbd></div>
       <div class="shortcut-item"><span>Add Spotlight Step</span><kbd>S</kbd></div>
+      <div class="shortcut-item"><span>Export Frame PNG</span><kbd>P</kbd></div>
       <div class="shortcut-item"><span>Step Frame Back/Fwd</span><kbd>← / →</kbd></div>
       <div class="shortcut-item"><span>Delete Selected Block</span><kbd>⌫ / Del</kbd></div>
       <div class="shortcut-item"><span>Undo Edit</span><kbd>⌘ Z</kbd></div>

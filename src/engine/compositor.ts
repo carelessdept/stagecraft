@@ -73,42 +73,33 @@ export function renderCompositeFrame(
         ? Math.round(28 * refScale)
         : Math.round(42 * refScale);
 
-  // 3. Apply Camera Zoom + 3D Perspective Tilt Transform around canvas center
+  // 3. Apply Camera Zoom + Optional Perspective Tilt Transform around canvas center
   ctx.save();
   const centerX = canvasWidth / 2;
   const centerY = canvasHeight / 2;
 
-  // Compute subtle 3D perspective shear from static tilt + optional dynamic cursor tilt
-  const dynX = style.dynamicTilt ? (cursor.y - 0.5) * -4.5 : 0;
-  const dynY = style.dynamicTilt ? (cursor.x - 0.5) * 4.5 : 0;
-  const totalTiltX = clamp(style.tiltX + dynX, -22, 22) * (Math.PI / 180);
-  const totalTiltY = clamp(style.tiltY + dynY, -22, 22) * (Math.PI / 180);
+  const dynX = style.dynamicTilt ? (cursor.y - 0.5) * -2.2 : 0;
+  const dynY = style.dynamicTilt ? (cursor.x - 0.5) * 2.2 : 0;
+  const totalTiltXDeg = clamp(style.tiltX + dynX, -18, 18);
+  const totalTiltYDeg = clamp(style.tiltY + dynY, -18, 18);
 
   // Camera translation so (camera.focusX, camera.focusY) inside the window stays centered when zoomed
   const focusCanvasX = winX + camera.focusX * winW;
   const focusCanvasY = winY + camera.focusY * winH;
 
   ctx.translate(centerX, centerY);
-  // Subtle perspective foreshortening approximation on 2D context
-  const cosY = Math.cos(totalTiltY * 0.45);
-  const cosX = Math.cos(totalTiltX * 0.45);
-  const shearX = Math.sin(totalTiltY) * 0.085;
-  const shearY = Math.sin(totalTiltX) * 0.065;
-  ctx.transform(cosY, shearY, shearX, cosX, 0, 0);
+  if (Math.abs(totalTiltXDeg) > 0.05 || Math.abs(totalTiltYDeg) > 0.05) {
+    const totalTiltX = totalTiltXDeg * (Math.PI / 180);
+    const totalTiltY = totalTiltYDeg * (Math.PI / 180);
+    const cosY = Math.cos(totalTiltY * 0.45);
+    const cosX = Math.cos(totalTiltX * 0.45);
+    const shearX = Math.sin(totalTiltY) * 0.06;
+    const shearY = Math.sin(totalTiltX) * 0.045;
+    ctx.transform(cosY, shearY, shearX, cosX, 0, 0);
+  }
 
   ctx.scale(camera.scale, camera.scale);
   ctx.translate(-focusCanvasX, -focusCanvasY);
-
-  // Optional subtle camera pan motion-blur ghost when zooming rapidly
-  const camSpeed = Math.hypot(camera.velocityX, camera.velocityY) + Math.abs(camera.velocityScale) * 0.35;
-  if (style.motionBlur > 15 && camSpeed > 0.35) {
-    const blurAlpha = clamp((camSpeed * (style.motionBlur / 100)) * 0.09, 0, 0.16);
-    ctx.save();
-    ctx.globalAlpha = blurAlpha;
-    ctx.translate(-camera.velocityX * 14, -camera.velocityY * 14);
-    drawWindowShadowAndShell(ctx, winX, winY, winW, winH, radius, style.shadowIntensity * 0.4, refScale);
-    ctx.restore();
-  }
 
   // 4. Window Elevation Shadow + Clipping Shell
   drawWindowShadowAndShell(ctx, winX, winY, winW, winH, radius, style.shadowIntensity, refScale);
@@ -524,24 +515,42 @@ function drawCursorWithMotionBlur(
   winW: number,
   winH: number,
 ): void {
-  const pressScale = cursor.isPressed ? 0.84 : 1.0;
+  // Smooth cosine click compression instead of binary step jump
+  let pressScale = 1.0;
+  if (cursor.activeRipples.length > 0) {
+    const earliest = cursor.activeRipples[cursor.activeRipples.length - 1]!;
+    if (earliest.progress < 0.28) {
+      const u = earliest.progress / 0.28;
+      pressScale = 1 - 0.13 * Math.sin(u * Math.PI);
+    }
+  } else if (cursor.isPressed) {
+    pressScale = 0.9;
+  }
   const effectiveScale = scale * pressScale;
 
-  // Directional velocity-vector trail samples when cursor moves fast
+  // Subtle directional velocity streak only during fast movements (no multi-cursor ghost trail)
   const pixelVx = cursor.vx * winW;
   const pixelVy = cursor.vy * winH;
   const pixelSpeed = Math.hypot(pixelVx, pixelVy);
 
-  if (motionBlurPct > 5 && pixelSpeed > 180) {
-    const blurFactor = (motionBlurPct / 100) * 0.022;
-    const steps = 5;
-    for (let s = steps; s >= 1; s--) {
-      const frac = s / steps;
-      const gx = cx - pixelVx * blurFactor * frac;
-      const gy = cy - pixelVy * blurFactor * frac;
-      const alpha = (1 - frac * 0.75) * 0.22 * (motionBlurPct / 100);
-      drawSingleCursorGlyph(ctx, gx, gy, style, effectiveScale, alpha);
-    }
+  if (motionBlurPct > 10 && pixelSpeed > 380) {
+    const streakLen = Math.min(36 * scale, pixelSpeed * 0.018 * (motionBlurPct / 100));
+    const angle = Math.atan2(pixelVy, pixelVx);
+    const tailX = cx - Math.cos(angle) * streakLen;
+    const tailY = cy - Math.sin(angle) * streakLen;
+
+    ctx.save();
+    const grad = ctx.createLinearGradient(cx, cy, tailX, tailY);
+    grad.addColorStop(0, `rgba(255, 255, 255, ${(0.22 * (motionBlurPct / 100)).toFixed(3)})`);
+    grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 6 * effectiveScale;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(cx + 3 * effectiveScale, cy + 6 * effectiveScale);
+    ctx.lineTo(tailX + 3 * effectiveScale, tailY + 6 * effectiveScale);
+    ctx.stroke();
+    ctx.restore();
   }
 
   drawSingleCursorGlyph(ctx, cx, cy, style, effectiveScale, 1.0);

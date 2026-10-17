@@ -7,10 +7,14 @@ import type {
 } from '../state/types.js';
 
 export const SPRING_PRESETS: Record<Exclude<SpringPresetName, 'custom'>, SpringConfig> = {
-  mellow: { stiffness: 140, damping: 22, mass: 1.0 },
-  snappy: { stiffness: 260, damping: 26, mass: 0.9 },
-  bouncy: { stiffness: 320, damping: 18, mass: 0.85 },
-  cinema: { stiffness: 95, damping: 20, mass: 1.2 },
+  // Critically damped (ζ ≈ 1.00): smooth, calm deceleration with zero text-wobbling bounce
+  mellow: { stiffness: 130, damping: 23, mass: 1.0 },
+  // Near-critically damped (ζ ≈ 0.98): responsive Apple CoreAnimation feel without jitter
+  snappy: { stiffness: 210, damping: 28, mass: 0.95 },
+  // Intentionally underdamped (ζ ≈ 0.60) for playful keynote callouts
+  bouncy: { stiffness: 300, damping: 18, mass: 0.85 },
+  // Deep cinematic glide (ζ ≈ 1.02)
+  cinema: { stiffness: 90, damping: 21, mass: 1.2 },
 };
 
 export interface SpringState1D {
@@ -88,9 +92,9 @@ export function sampleSpringResponseCurve(
   const dampingRatio = c / (2 * Math.sqrt(k * m));
 
   let regime: SpringCurveDiagnostics['regime'] = 'underdamped';
-  if (Math.abs(dampingRatio - 1) <= 0.04) {
+  if (Math.abs(dampingRatio - 1) <= 0.05) {
     regime = 'critically-damped';
-  } else if (dampingRatio > 1.04) {
+  } else if (dampingRatio > 1.05) {
     regime = 'overdamped';
   }
 
@@ -149,6 +153,20 @@ export function clampViewportFocus(focusCoord: number, scale: number): number {
 }
 
 /**
+ * Applies a calm deadzone around the segment anchor so small cursor movements
+ * inside the focused region never cause seasick camera jitter.
+ */
+function applyDeadzoneFollow(anchor: number, cursor: number, deadzone = 0.12): number {
+  const delta = cursor - anchor;
+  if (Math.abs(delta) <= deadzone) {
+    return anchor + delta * 0.12;
+  }
+  const sign = delta > 0 ? 1 : -1;
+  const excess = Math.abs(delta) - deadzone;
+  return anchor + sign * (deadzone * 0.12 + excess * 0.45);
+}
+
+/**
  * Deterministically evaluates the 3-DOF spring camera (scale, focusX, focusY)
  * at any timeline timestamp `timeSec`.
  */
@@ -193,9 +211,8 @@ export function evaluateCameraAtTime(
       targetScale = clamp(activeSeg.scale, 1.0, 4.5);
       if (activeSeg.mode === 'auto-cursor') {
         const cursorPos = cursorAtTime(t);
-        // Blend 75% live cursor + 25% segment anchor for cinematic framing stability
-        rawTargetX = cursorPos.x * 0.78 + activeSeg.targetX * 0.22;
-        rawTargetY = cursorPos.y * 0.78 + activeSeg.targetY * 0.22;
+        rawTargetX = applyDeadzoneFollow(activeSeg.targetX, cursorPos.x, 0.12);
+        rawTargetY = applyDeadzoneFollow(activeSeg.targetY, cursorPos.y, 0.12);
       } else {
         rawTargetX = activeSeg.targetX;
         rawTargetY = activeSeg.targetY;
@@ -206,14 +223,12 @@ export function evaluateCameraAtTime(
     const targetY = clampViewportFocus(rawTargetY, targetScale);
 
     scaleState = stepSpring1D(scaleState, targetScale, segConfig, dt);
-    // Focus pan uses a slightly gentler spring when returning to 1.0x so zoom-out feels natural
-    const panConfig: SpringConfig = activeSeg
-      ? segConfig
-      : {
-          stiffness: segConfig.stiffness * 0.85,
-          damping: segConfig.damping * 1.05,
-          mass: segConfig.mass,
-        };
+    // Camera pan uses a slightly softer, overdamped response so horizontal/vertical framing glides calmly
+    const panConfig: SpringConfig = {
+      stiffness: segConfig.stiffness * 0.72,
+      damping: segConfig.damping * 1.12,
+      mass: segConfig.mass * 1.05,
+    };
     xState = stepSpring1D(xState, targetX, panConfig, dt);
     yState = stepSpring1D(yState, targetY, panConfig, dt);
   }

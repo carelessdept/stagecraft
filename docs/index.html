@@ -249,7 +249,7 @@
           </div>
           <div class="toggle-row">
             <span>Subtle Cursor-Follow Tilt</span>
-            <button id="toggleDynamicTilt" class="switch active" type="button" aria-label="Toggle dynamic cursor tilt"></button>
+            <button id="toggleDynamicTilt" class="switch" type="button" aria-label="Toggle dynamic cursor tilt"></button>
           </div>
         </section>
       </div>
@@ -275,7 +275,7 @@
           <div class="control-row">
             <div class="control-label">
               <span>Focus Anchor</span>
-              <span class="control-val" id="valZoomTarget">0.32, 0.38</span>
+              <span class="control-val" id="valZoomTarget">0.34, 0.36</span>
             </div>
           </div>
         </section>
@@ -283,7 +283,7 @@
         <section class="insp-section">
           <div class="insp-section-header">
             <span>Spring Physics</span>
-            <span id="springRegimeBadge" style="color:var(--success)">Underdamped</span>
+            <span id="springRegimeBadge" style="color:var(--success)">Critically Damped</span>
           </div>
           <div class="segmented" id="springPresetGroup" style="width:100%;display:grid;grid-template-columns:repeat(4,1fr);">
             <button class="seg-btn" data-spring="mellow">Mellow</button>
@@ -294,22 +294,22 @@
 
           <canvas id="springCurveCanvas" class="spring-curve-canvas" width="560" height="180"></canvas>
           <div class="spring-diagnostics">
-            <span id="diagZeta">ζ = 0.85</span>
-            <span id="diagOvershoot">Overshoot: 1%</span>
-            <span id="diagSettling">Settle: 390 ms</span>
+            <span id="diagZeta">ζ = 0.99</span>
+            <span id="diagOvershoot">Overshoot: 0%</span>
+            <span id="diagSettling">Settle: 310 ms</span>
           </div>
 
           <div class="control-row">
-            <div class="control-label"><span>Stiffness (k)</span><span class="control-val" id="valStiffness">260</span></div>
-            <input id="sliderStiffness" type="range" min="40" max="600" step="5" value="260" />
+            <div class="control-label"><span>Stiffness (k)</span><span class="control-val" id="valStiffness">210</span></div>
+            <input id="sliderStiffness" type="range" min="40" max="600" step="5" value="210" />
           </div>
           <div class="control-row">
-            <div class="control-label"><span>Damping (c)</span><span class="control-val" id="valDamping">26</span></div>
-            <input id="sliderDamping" type="range" min="6" max="80" step="1" value="26" />
+            <div class="control-label"><span>Damping (c)</span><span class="control-val" id="valDamping">28</span></div>
+            <input id="sliderDamping" type="range" min="6" max="80" step="1" value="28" />
           </div>
           <div class="control-row">
-            <div class="control-label"><span>Mass (m)</span><span class="control-val" id="valMass">0.90</span></div>
-            <input id="sliderMass" type="range" min="0.3" max="2.5" step="0.05" value="0.90" />
+            <div class="control-label"><span>Mass (m)</span><span class="control-val" id="valMass">0.95</span></div>
+            <input id="sliderMass" type="range" min="0.3" max="2.5" step="0.05" value="0.95" />
           </div>
         </section>
       </div>
@@ -328,16 +328,16 @@
             </select>
           </div>
           <div class="control-row">
-            <div class="control-label"><span>Cursor Size</span><span class="control-val" id="valCursorScale">1.25×</span></div>
-            <input id="sliderCursorScale" type="range" min="0.8" max="2.5" step="0.05" value="1.25" />
+            <div class="control-label"><span>Cursor Size</span><span class="control-val" id="valCursorScale">1.20×</span></div>
+            <input id="sliderCursorScale" type="range" min="0.8" max="2.5" step="0.05" value="1.20" />
           </div>
           <div class="control-row">
-            <div class="control-label"><span>Path Smoothing</span><span class="control-val" id="valSmoothing">75%</span></div>
-            <input id="sliderSmoothing" type="range" min="0" max="100" step="1" value="75" />
+            <div class="control-label"><span>Path Smoothing</span><span class="control-val" id="valSmoothing">65%</span></div>
+            <input id="sliderSmoothing" type="range" min="0" max="100" step="1" value="65" />
           </div>
           <div class="control-row">
-            <div class="control-label"><span>Motion Blur</span><span class="control-val" id="valMotionBlur">45%</span></div>
-            <input id="sliderMotionBlur" type="range" min="0" max="100" step="1" value="45" />
+            <div class="control-label"><span>Motion Blur</span><span class="control-val" id="valMotionBlur">35%</span></div>
+            <input id="sliderMotionBlur" type="range" min="0" max="100" step="1" value="35" />
           </div>
         </section>
 
@@ -349,7 +349,7 @@
           </div>
           <div class="toggle-row">
             <span>Force-Touch Click Sound</span>
-            <button id="toggleClickSound" class="switch active" type="button"></button>
+            <button id="toggleClickSound" class="switch" type="button"></button>
           </div>
           <div class="toggle-row">
             <span>Focus Spotlight Dimming</span>

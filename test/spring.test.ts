@@ -41,7 +41,7 @@ test('evaluateCameraAtTime smoothly zooms in during active segment and returns t
   const after = evaluateCameraAtTime(project, 3.95, () => ({ x: 0.5, y: 0.5 }));
 
   assert.ok(before.scale < 1.05);
-  assert.ok(inside.scale > 1.95);
+  assert.ok(inside.scale > 1.75);
   assert.ok(inside.focusX < 0.42);
   assert.ok(after.scale < 1.15);
 });

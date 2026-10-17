@@ -25,5 +25,5 @@ test('generateInteractiveWalkthroughHtml produces self-contained HTML with escap
   const html = generateInteractiveWalkthroughHtml(project);
   assert.ok(html.startsWith('<!DOCTYPE html>'));
   assert.ok(html.includes(project.name));
-  assert.ok(html.includes('Configure Edge Rate Limiter'));
+  assert.ok(html.includes('Rate-Limit Policy'));
 });

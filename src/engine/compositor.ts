@@ -198,6 +198,8 @@ export function renderCompositeFrame(
   }
 
   // 8. Click Ripples + Motion-Blurred Cursor inside Window
+  // Compensate cursor & ripple scale when camera is zoomed in so the pointer stays crisp and proportional
+  const zoomCursorComp = 1 / Math.pow(Math.max(1, camera.scale), 0.42);
   const cursorCanvasX = winX + cursor.x * winW;
   const cursorCanvasY = contentY + cursor.y * contentH;
 
@@ -206,18 +208,18 @@ export function renderCompositeFrame(
       const rx = winX + ripple.x * winW;
       const ry = contentY + ripple.y * contentH;
       const easeOut = 1 - Math.pow(1 - ripple.progress, 3);
-      const rRadius = (12 + easeOut * 46) * refScale * style.cursorScale;
-      const alpha = (1 - ripple.progress) * 0.75;
+      const rRadius = (10 + easeOut * 34) * refScale * style.cursorScale * zoomCursorComp;
+      const alpha = (1 - ripple.progress) * 0.68;
 
       ctx.beginPath();
       ctx.arc(rx, ry, rRadius, 0, Math.PI * 2);
-      ctx.strokeStyle = `rgba(129, 140, 248, ${alpha.toFixed(3)})`;
-      ctx.lineWidth = 2.5 * refScale;
+      ctx.strokeStyle = `rgba(255, 255, 255, ${(alpha * 0.85).toFixed(3)})`;
+      ctx.lineWidth = 2 * refScale * zoomCursorComp;
       ctx.stroke();
 
       ctx.beginPath();
-      ctx.arc(rx, ry, rRadius * 0.55, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(99, 102, 241, ${(alpha * 0.28).toFixed(3)})`;
+      ctx.arc(rx, ry, rRadius * 0.48, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(56, 189, 248, ${(alpha * 0.24).toFixed(3)})`;
       ctx.fill();
     }
   }
@@ -228,7 +230,7 @@ export function renderCompositeFrame(
     cursorCanvasY,
     cursor,
     style.cursorStyle,
-    style.cursorScale * refScale,
+    style.cursorScale * refScale * zoomCursorComp,
     style.motionBlur,
     winW,
     contentH,
@@ -242,10 +244,10 @@ export function renderCompositeFrame(
       const ty = contentY + sel.targetY * contentH;
       ctx.save();
       ctx.strokeStyle = 'rgba(56, 189, 248, 0.85)';
-      ctx.lineWidth = 1.5 * refScale;
+      ctx.lineWidth = 1.5 * refScale * zoomCursorComp;
       ctx.setLineDash([4 * refScale, 4 * refScale]);
       ctx.beginPath();
-      ctx.arc(tx, ty, 22 * refScale, 0, Math.PI * 2);
+      ctx.arc(tx, ty, 20 * refScale * zoomCursorComp, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
     }
@@ -253,11 +255,16 @@ export function renderCompositeFrame(
 
   ctx.restore(); // end window clip
 
-  // 9. Specular 1px Inner Glass Rim on Window Shell
+  // 9. Crisp Outer Contact Rim + Specular 1px Inner Glass Rim on Window Shell
+  roundRect(ctx, winX - 0.5, winY - 0.5, winW + 1, winH + 1, radius + 0.5);
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.38)';
+  ctx.lineWidth = Math.max(1, refScale);
+  ctx.stroke();
+
   if (style.insetBorder > 0) {
-    roundRect(ctx, winX + 0.5, winY + 0.5, winW - 1, winH - 1, radius);
-    ctx.strokeStyle = `rgba(255, 255, 255, ${((style.insetBorder / 100) * 0.24).toFixed(3)})`;
-    ctx.lineWidth = Math.max(1, 1.25 * refScale);
+    roundRect(ctx, winX + 0.5, winY + 0.5, winW - 1, winH - 1, Math.max(1, radius - 0.5));
+    ctx.strokeStyle = `rgba(255, 255, 255, ${((style.insetBorder / 100) * 0.26).toFixed(3)})`;
+    ctx.lineWidth = Math.max(1, 1.15 * refScale);
     ctx.stroke();
   }
 
@@ -431,14 +438,25 @@ function drawWindowShadowAndShell(
 ): void {
   ctx.save();
   if (shadowIntensity > 0) {
-    const alpha = (shadowIntensity / 100) * 0.68;
-    ctx.shadowColor = `rgba(0, 0, 0, ${alpha.toFixed(3)})`;
-    ctx.shadowBlur = (28 + (shadowIntensity / 100) * 56) * refScale;
+    // Stage 1: Deep ambient dispersion shadow
+    const ambientAlpha = (shadowIntensity / 100) * 0.58;
+    ctx.shadowColor = `rgba(0, 0, 0, ${ambientAlpha.toFixed(3)})`;
+    ctx.shadowBlur = (36 + (shadowIntensity / 100) * 64) * refScale;
     ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = (14 + (shadowIntensity / 100) * 22) * refScale;
+    ctx.shadowOffsetY = (18 + (shadowIntensity / 100) * 26) * refScale;
+    roundRect(ctx, x, y, w, h, radius);
+    ctx.fillStyle = '#0D1017';
+    ctx.fill();
+
+    // Stage 2: Tighter grounding contact shadow
+    const contactAlpha = (shadowIntensity / 100) * 0.36;
+    ctx.shadowColor = `rgba(0, 0, 0, ${contactAlpha.toFixed(3)})`;
+    ctx.shadowBlur = (10 + (shadowIntensity / 100) * 14) * refScale;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = (4 + (shadowIntensity / 100) * 6) * refScale;
   }
   roundRect(ctx, x, y, w, h, radius);
-  ctx.fillStyle = '#0B0E14';
+  ctx.fillStyle = '#0D1017';
   ctx.fill();
   ctx.restore();
 }
@@ -455,10 +473,10 @@ function drawWindowChromeHeader(
 ): void {
   ctx.save();
   ctx.fillStyle =
-    chromeStyle === 'macos-glass' ? 'rgba(24, 28, 40, 0.86)' : '#141822';
+    chromeStyle === 'macos-glass' ? 'rgba(22, 25, 34, 0.94)' : '#141720';
   ctx.fillRect(x, y, w, headerH);
 
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.07)';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
   ctx.lineWidth = Math.max(1, refScale);
   ctx.beginPath();
   ctx.moveTo(x, y + headerH);
@@ -466,20 +484,27 @@ function drawWindowChromeHeader(
   ctx.stroke();
 
   if (chromeStyle !== 'minimal') {
-    const dotColors = ['#FF5F56', '#FFBD2E', '#27C93F'];
+    const dots = [
+      { fill: '#FF5F56', stroke: 'rgba(224, 68, 62, 0.8)' },
+      { fill: '#FFBD2E', stroke: 'rgba(222, 161, 35, 0.8)' },
+      { fill: '#27C93F', stroke: 'rgba(26, 171, 43, 0.8)' },
+    ];
     const dotRadius = 6 * refScale;
     const startX = x + 20 * refScale;
     const centerY = y + headerH / 2;
-    dotColors.forEach((col, idx) => {
+    dots.forEach((dot, idx) => {
       ctx.beginPath();
       ctx.arc(startX + idx * 20 * refScale, centerY, dotRadius, 0, Math.PI * 2);
-      ctx.fillStyle = col;
+      ctx.fillStyle = dot.fill;
       ctx.fill();
+      ctx.strokeStyle = dot.stroke;
+      ctx.lineWidth = Math.max(0.75, 0.8 * refScale);
+      ctx.stroke();
     });
   }
 
   if (title) {
-    ctx.fillStyle = 'rgba(226, 232, 240, 0.75)';
+    ctx.fillStyle = 'rgba(226, 232, 240, 0.78)';
     ctx.font = `500 ${Math.max(10, Math.round(13 * refScale))}px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';

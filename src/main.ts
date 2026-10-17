@@ -485,9 +485,9 @@ export function bootstrapStagecraftStudio(): void {
       const pill = document.createElement('div');
       pill.className = 'hud-pill-marker key-marker';
       pill.style.left = `${(k.time / dur) * 100}%`;
-      pill.style.width = `${Math.max(3, (k.duration / dur) * 100)}%`;
-      pill.textContent = `⌨ ${k.keys}`;
-      pill.title = `${k.keys} (${k.label ?? ''}) · Click to jump, Alt+Click to delete`;
+      pill.style.width = `${Math.max(4, (k.duration / dur) * 100)}%`;
+      pill.textContent = k.label ? `${k.keys} · ${k.label}` : k.keys;
+      pill.title = `${k.keys} (${k.label ?? ''}) · Click to jump, Option+Click to delete`;
       pill.addEventListener('click', ev => {
         ev.stopPropagation();
         if (ev.altKey) {
@@ -508,9 +508,9 @@ export function bootstrapStagecraftStudio(): void {
       const pill = document.createElement('div');
       pill.className = 'hud-pill-marker spot-marker';
       pill.style.left = `${(s.time / dur) * 100}%`;
-      pill.style.width = `${Math.max(4, (s.duration / dur) * 100)}%`;
-      pill.textContent = `✦ ${s.title}`;
-      pill.title = `${s.title} · Click to jump, Alt+Click to delete`;
+      pill.style.width = `${Math.max(5, (s.duration / dur) * 100)}%`;
+      pill.textContent = s.title;
+      pill.title = `${s.title} · Click to jump, Option+Click to delete`;
       pill.addEventListener('click', ev => {
         ev.stopPropagation();
         if (ev.altKey) {
@@ -540,7 +540,7 @@ export function bootstrapStagecraftStudio(): void {
   }
 
   function syncPlayPauseButton(): void {
-    playPauseBtn.textContent = isPlaying ? '⏸ Pause' : '▶ Play';
+    playPauseBtn.textContent = isPlaying ? 'Pause' : '▶ Play';
   }
 
   function syncAllUiFromState(): void {
@@ -750,7 +750,7 @@ export function bootstrapStagecraftStudio(): void {
 
   loopToggleBtn.addEventListener('click', () => {
     loopPlayback = !loopPlayback;
-    loopToggleBtn.textContent = `↻ Loop: ${loopPlayback ? 'On' : 'Off'}`;
+    loopToggleBtn.textContent = `Loop: ${loopPlayback ? 'On' : 'Off'}`;
   });
 
   function insertZoomAtPlayhead(): void {

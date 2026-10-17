@@ -19,7 +19,7 @@ test('ProjectHistoryStack supports multi-step undo, redo, and checkpointing', ()
 
   const undone = history.undo();
   assert.ok(undone);
-  assert.equal(undone!.style.padding, 64);
+  assert.equal(undone!.style.padding, initial.style.padding);
   assert.equal(history.canRedo, true);
 
   const redone = history.redo();
